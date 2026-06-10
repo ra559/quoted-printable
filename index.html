@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quoted-Printable to HTML Decoder</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #4a5568;
+        }
+        textarea {
+            width: 100%;
+            height: 180px;
+            padding: 10px;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 14px;
+            margin-bottom: 15px;
+            resize: vertical;
+        }
+        /* Flexbox container to hold both buttons side-by-side */
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        button {
+            flex: 1;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-decode {
+            background-color: #3182ce;
+        }
+        .btn-decode:hover {
+            background-color: #2b6cb0;
+        }
+        .btn-copy {
+            background-color: #38a169;
+        }
+        .btn-copy:hover {
+            background-color: #2f855a;
+        }
+        .output-box {
+            margin-top: 25px;
+            border-top: 2px solid #e2e8f0;
+            padding-top: 20px;
+        }
+        iframe {
+            width: 100%;
+            height: 350px;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            background: #fff;
+        }
+        /* Responsive fallback for tiny screens */
+        @media (max-width: 480px) {
+            .button-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Quoted-Printable Decoder</h1>
+    
+    <label for="inputQP">Paste Quoted-Printable Raw Text Here:</label>
+    <textarea id="inputQP" placeholder="Paste your raw email body part here (e.g., lines ending in = or containing things like =3D)..."></textarea>
+    
+    <div class="button-group">
+        <button class="btn-decode" onclick="decodeAndRender()">Decode and Render HTML</button>
+        <button class="btn-copy" id="copyBtn" onclick="copyToClipboard()">Copy Decoded HTML</button>
+    </div>
+    
+    <div class="output-box">
+        <label>Rendered HTML Output:</label>
+        <iframe id="htmlPreview"></iframe>
+    </div>
+</div>
+
+<script>
+// Helper function to decode the Quoted-Printable format
+function decodeQuotedPrintable(input) {
+    // 1. Handle soft line breaks
+    let decoded = input.replace(/=\r?\n/g, '');
+
+    // 2. Handle literal hex escapes
+    decoded = decoded.replace(/=([0-9A-F]{2})/gi, function(match, hex) {
+        return String.fromCharCode(parseInt(hex, 16));
+    });
+
+    return decoded;
+}
+
+// Global or scoped access to decoded HTML so both render and copy functions can grab it easily
+function getDecodedContent() {
+    const rawInput = document.getElementById('inputQP').value;
+    return decodeQuotedPrintable(rawInput);
+}
+
+function decodeAndRender() {
+    const decodedHtml = getDecodedContent();
+    const iframe = document.getElementById('htmlPreview');
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    
+    iframeDoc.open();
+    iframeDoc.write(decodedHtml);
+    iframeDoc.close();
+}
+
+function copyToClipboard() {
+    const decodedHtml = getDecodedContent();
+    const copyBtn = document.getElementById('copyBtn');
+
+    if (!decodedHtml.trim()) {
+        alert("Please paste some text to decode first!");
+        return;
+    }
+
+    // Modern asynchronous clipboard API
+    navigator.clipboard.writeText(decodedHtml).then(() => {
+        // Visual feedback to the user that it worked
+        const originalText = copyBtn.innerText;
+        copyBtn.innerText = "Copied! ✓";
+        copyBtn.style.backgroundColor = "#276749"; // Darken green slightly
+
+        setTimeout(() => {
+            copyBtn.innerText = originalText;
+            copyBtn.style.backgroundColor = ""; // Reset to CSS default
+        }, 2000);
+    }).catch(err => {
+        console.error('Could not copy text: ', err);
+        alert("Failed to copy text. Please try selecting the text manually.");
+    });
+}
+</script>
+
+</body>
+</html>
