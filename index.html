@@ -42,6 +42,11 @@
             margin-bottom: 15px;
             resize: vertical;
         }
+        #plainTextOutput {
+            height: 200px;
+            background-color: #f9fafb;
+            color: #1f2937;
+        }
         /* Flexbox container to hold both buttons side-by-side */
         .button-group {
             display: flex;
@@ -69,6 +74,12 @@
         }
         .btn-copy:hover {
             background-color: #2f855a;
+        }
+        .btn-new-page {
+            background-color: #9f7aea;
+        }
+        .btn-new-page:hover {
+            background-color: #805ad5;
         }
         .output-box {
             margin-top: 25px;
@@ -101,11 +112,17 @@
     <div class="button-group">
         <button class="btn-decode" onclick="decodeAndRender()">Decode and Render HTML</button>
         <button class="btn-copy" id="copyBtn" onclick="copyToClipboard()">Copy Decoded HTML</button>
+        <button class="btn-new-page" onclick="openInNewPage()">Open in New Page</button>
     </div>
     
     <div class="output-box">
         <label>Rendered HTML Output:</label>
         <iframe id="htmlPreview"></iframe>
+    </div>
+
+    <div class="output-box">
+        <label>Plain Text Version:</label>
+        <textarea id="plainTextOutput" readonly placeholder="Plain text version will appear here after decoding..."></textarea>
     </div>
 </div>
 
@@ -129,14 +146,44 @@ function getDecodedContent() {
     return decodeQuotedPrintable(rawInput);
 }
 
+function extractPlainText(rawInput) {
+    const plainTextStart = rawInput.indexOf('Content-Type: text/plain; charset="UTF-8"');
+    const htmlTypeStart = rawInput.indexOf('Content-Type: text/html; charset="UTF-8"');
+
+    if (plainTextStart === -1 || htmlTypeStart === -1 || plainTextStart >= htmlTypeStart) {
+        return "";
+    }
+
+    // Start from after the text/plain Content-Type line
+    let startIndex = plainTextStart + 'Content-Type: text/plain; charset="UTF-8"'.length;
+
+    // Skip to the next line
+    startIndex = rawInput.indexOf('\n', startIndex);
+    if (startIndex === -1) return "";
+    startIndex += 1;
+
+    // Extract text between the two content types
+    let plainText = rawInput.substring(startIndex, htmlTypeStart);
+
+    // Trim trailing whitespace and newlines
+    plainText = plainText.trim();
+
+    return plainText;
+}
+
 function decodeAndRender() {
+    const rawInput = document.getElementById('inputQP').value;
     const decodedHtml = getDecodedContent();
     const iframe = document.getElementById('htmlPreview');
     const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-    
+
     iframeDoc.open();
     iframeDoc.write(decodedHtml);
     iframeDoc.close();
+
+    // Extract and display plain text version
+    const plainText = extractPlainText(rawInput);
+    document.getElementById('plainTextOutput').value = decodeQuotedPrintable(plainText);
 }
 
 function copyToClipboard() {
@@ -163,6 +210,33 @@ function copyToClipboard() {
         console.error('Could not copy text: ', err);
         alert("Failed to copy text. Please try selecting the text manually.");
     });
+}
+
+function openInNewPage() {
+    let decodedHtml = getDecodedContent();
+
+    if (!decodedHtml.trim()) {
+        alert("Please paste some text to decode first!");
+        return;
+    }
+
+    // Find DOCTYPE declaration (case-insensitive)
+    const doctypeMatch = decodedHtml.match(/<!doctype[^>]*>/i);
+    if (doctypeMatch) {
+        decodedHtml = decodedHtml.substring(decodedHtml.indexOf(doctypeMatch[0]));
+    }
+
+    // Find closing HTML tag and remove everything after it
+    const htmlCloseIndex = decodedHtml.lastIndexOf('</html>');
+    if (htmlCloseIndex !== -1) {
+        decodedHtml = decodedHtml.substring(0, htmlCloseIndex + 7); // 7 = length of '</html>'
+    }
+
+    const newWindow = window.open();
+    const newDoc = newWindow.document;
+    newDoc.open();
+    newDoc.write(decodedHtml);
+    newDoc.close();
 }
 </script>
 
